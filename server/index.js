@@ -109,4 +109,12 @@ app.post('/api/categories', async (req, res) => {
   } catch (e) { res.status(500).json({ error: e.message }) }
 })
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`))
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`)
+  // Ping every 14 min to prevent Render free tier sleep
+  setInterval(() => {
+    fetch('https://redbean-ims-server.onrender.com/')
+      .then(() => console.log('Self-ping OK'))
+      .catch(e => console.log('Self-ping failed:', e.message))
+  }, 14 * 60 * 1000)
+})
