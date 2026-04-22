@@ -1,32 +1,49 @@
 import { useState, useEffect } from 'react'
 import { useApp } from '../../context/AppContext.jsx'
 
-const CATS = ['Electronics', 'Accessories', 'Clothing', 'Food', 'Stationery', 'Other']
-
 export default function ProductModal({ open, onClose, editProduct }) {
-  const { addProduct, updateProduct } = useApp()
+  const { addProduct, updateProduct, categories, addCategory } = useApp()
   const [form, setForm] = useState({ name: '', vendorName: '', invoiceNumber: '', category: 'Electronics', sku: '', price: '', quantity: '', lowStockAt: '5' })
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [newCat, setNewCat] = useState('')
+  const [showNewCat, setShowNewCat] = useState(false)
 
   useEffect(() => {
     if (editProduct) {
       setForm({ name: editProduct.name, vendorName: editProduct.vendorName || '', invoiceNumber: editProduct.invoiceNumber || '', category: editProduct.category, sku: editProduct.sku || '', price: String(editProduct.price), quantity: String(editProduct.quantity), lowStockAt: String(editProduct.lowStockAt) })
     } else {
-      setForm({ name: '', vendorName: '', invoiceNumber: '', category: 'Electronics', sku: '', price: '', quantity: '', lowStockAt: '5' })
+      setForm({ name: '', vendorName: '', invoiceNumber: '', category: categories[0] || 'Electronics', sku: '', price: '', quantity: '', lowStockAt: '5' })
     }
+    setError('')
+    setNewCat('')
+    setShowNewCat(false)
   }, [editProduct, open])
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
 
-  function handleSave() {
-    if (!form.name || !form.price || !form.quantity) { alert('Name, Price, Qty required'); return }
+  async function handleAddCategory() {
+    const name = newCat.trim()
+    if (!name) return
+    await addCategory(name)
+    setForm(f => ({ ...f, category: name }))
+    setNewCat('')
+    setShowNewCat(false)
+  }
+
+  async function handleSave() {
+    if (!form.name || !form.price || !form.quantity) { setError('Name, Price and Quantity are required'); return }
     setLoading(true)
-    setTimeout(() => {
-      if (editProduct) updateProduct({ id: editProduct.id, ...form })
-      else addProduct(form)
-      setLoading(false)
+    setError('')
+    try {
+      if (editProduct) await updateProduct({ id: editProduct.id, ...form })
+      else await addProduct(form)
       onClose()
-    }, 300)
+    } catch (e) {
+      setError(e.message || 'Failed to save product')
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (!open) return null
@@ -39,16 +56,28 @@ export default function ProductModal({ open, onClose, editProduct }) {
           <button className="ib" onClick={onClose}>✕</button>
         </div>
         <div className="mbd">
+          {error && <div style={{ background: '#ff444422', border: '1px solid #ff4444', borderRadius: 8, padding: '8px 12px', color: '#ff4444', fontSize: 13, marginBottom: 8 }}>{error}</div>}
           <div className="fg"><label>Product Name *</label><input value={form.name} onChange={set('name')} placeholder="e.g. Laptop Pro X" /></div>
           <div className="g2f">
             <div className="fg"><label>Vendor Name</label><input value={form.vendorName} onChange={set('vendorName')} placeholder="Vendor Co." /></div>
             <div className="fg"><label>Vendor Invoice No.</label><input value={form.invoiceNumber} onChange={set('invoiceNumber')} placeholder="INV-V001" /></div>
           </div>
           <div className="g2f">
-            <div className="fg"><label>Category</label>
-              <select value={form.category} onChange={set('category')}>
-                {CATS.map(c => <option key={c}>{c}</option>)}
-              </select>
+            <div className="fg">
+              <label>Category</label>
+              <div style={{ display: 'flex', gap: 6 }}>
+                <select value={form.category} onChange={e => { if (e.target.value === '__new__') setShowNewCat(true); else setForm(f => ({ ...f, category: e.target.value })) }} style={{ flex: 1 }}>
+                  {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                  <option value="__new__">+ Add new category</option>
+                </select>
+              </div>
+              {showNewCat && (
+                <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+                  <input value={newCat} onChange={e => setNewCat(e.target.value)} placeholder="New category name" onKeyDown={e => e.key === 'Enter' && handleAddCategory()} style={{ flex: 1 }} />
+                  <button className="btn bp" style={{ padding: '0 12px' }} onClick={handleAddCategory}>Add</button>
+                  <button className="btn bss" style={{ padding: '0 10px' }} onClick={() => setShowNewCat(false)}>✕</button>
+                </div>
+              )}
             </div>
             <div className="fg"><label>SKU (blank = auto)</label><input value={form.sku} onChange={set('sku')} placeholder="Auto-generated" /></div>
           </div>

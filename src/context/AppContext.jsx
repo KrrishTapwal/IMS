@@ -14,24 +14,41 @@ function genSKU() {
   return 'SKU-' + Math.random().toString(36).slice(2, 8).toUpperCase()
 }
 
+async function api(path, method = 'GET', body) {
+  const res = await fetch(path, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : {},
+    body: body ? JSON.stringify(body) : undefined,
+  })
+  if (!res.ok) throw new Error(`API ${method} ${path} failed: ${res.status}`)
+  return res.json()
+}
+
 export function AppProvider({ children }) {
-  const [auth, setAuth]         = useState(null)
-  const [products, setProducts] = useState([])
-  const [transactions, setTxns] = useState([])
-  const [invoices, setInvoices] = useState([])
-  const [loading, setLoading]   = useState(true)
+  const [auth, setAuth]             = useState(null)
+  const [products, setProducts]     = useState([])
+  const [transactions, setTxns]     = useState([])
+  const [invoices, setInvoices]     = useState([])
+  const [categories, setCategories] = useState(['Electronics', 'Accessories', 'Clothing', 'Food', 'Stationery', 'Other'])
+  const [loading, setLoading]       = useState(true)
+  const [apiError, setApiError]     = useState(null)
 
   useEffect(() => {
     Promise.all([
-      fetch('/api/products').then(r => r.json()),
-      fetch('/api/transactions').then(r => r.json()),
-      fetch('/api/invoices').then(r => r.json()),
-    ]).then(([prods, txns, invs]) => {
+      api('/api/products'),
+      api('/api/transactions'),
+      api('/api/invoices'),
+      api('/api/categories'),
+    ]).then(([prods, txns, invs, cats]) => {
       setProducts(prods)
       setTxns(txns)
       setInvoices(invs)
+      setCategories(cats)
       setLoading(false)
-    }).catch(() => setLoading(false))
+    }).catch(err => {
+      setApiError(err.message)
+      setLoading(false)
+    })
   }, [])
 
   function login(email, password) {
@@ -42,6 +59,11 @@ export function AppProvider({ children }) {
   }
 
   function logout() { setAuth(null) }
+
+  async function addCategory(name) {
+    await api('/api/categories', 'POST', { name })
+    setCategories(prev => prev.includes(name) ? prev : [...prev, name])
+  }
 
   async function addProduct(data) {
     const p = {
@@ -55,18 +77,15 @@ export function AppProvider({ children }) {
       quantity: parseInt(data.quantity) || 0,
       lowStockAt: parseInt(data.lowStockAt) || 5,
     }
-    const saved = await fetch('/api/products', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(p),
-    }).then(r => r.json())
+    const saved = await api('/api/products', 'POST', p)
     setProducts(prev => [...prev, saved])
     return saved
   }
 
   async function updateProduct(data) {
+    const existing = products.find(p => p.id === data.id)
     const updated = {
-      ...products.find(p => p.id === data.id),
+      ...existing,
       name: data.name,
       vendorName: data.vendorName || '',
       invoiceNumber: data.invoiceNumber || '',
@@ -76,21 +95,13 @@ export function AppProvider({ children }) {
       quantity: parseInt(data.quantity),
       lowStockAt: parseInt(data.lowStockAt),
     }
-    await fetch('/api/products', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updated),
-    })
+    await api('/api/products', 'PUT', updated)
     setProducts(prev => prev.map(p => p.id === data.id ? updated : p))
   }
 
   async function deleteProduct(id) {
     const prod = products.find(p => p.id === id)
-    await fetch('/api/products', {
-      method: 'DELETE',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ _id: prod._id }),
-    })
+    await api('/api/products', 'DELETE', { _id: prod._id })
     setProducts(prev => prev.filter(p => p.id !== id))
   }
 
@@ -108,19 +119,10 @@ export function AppProvider({ children }) {
       note: note || '',
       date: new Date().toISOString(),
     }
-    const saved = await fetch('/api/transactions', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(txn),
-    }).then(r => r.json())
+    const saved = await api('/api/transactions', 'POST', txn)
     setTxns(prev => [saved, ...prev])
-    const newQty = prod.quantity + (type === 'IN' ? q : -q)
-    const updatedProd = { ...prod, quantity: newQty }
-    await fetch('/api/products', {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedProd),
-    })
+    const updatedProd = { ...prod, quantity: prod.quantity + (type === 'IN' ? q : -q) }
+    await api('/api/products', 'PUT', updatedProd)
     setProducts(prev => prev.map(p => p.id === productId ? updatedProd : p))
     return saved
   }
@@ -139,11 +141,7 @@ export function AppProvider({ children }) {
     for (const item of data.items) {
       await addTransaction('OUT', item.productId, item.qty, 'Invoice ' + inv.id)
     }
-    const saved = await fetch('/api/invoices', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(inv),
-    }).then(r => r.json())
+    const saved = await api('/api/invoices', 'POST', inv)
     setInvoices(prev => [saved, ...prev])
     return saved
   }
@@ -163,10 +161,10 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={{
-      auth, login, logout, loading,
-      products, transactions, invoices, stats,
+      auth, login, logout, loading, apiError,
+      products, transactions, invoices, categories, stats,
       addProduct, updateProduct, deleteProduct,
-      addTransaction, addInvoice,
+      addTransaction, addInvoice, addCategory,
     }}>
       {children}
     </AppContext.Provider>

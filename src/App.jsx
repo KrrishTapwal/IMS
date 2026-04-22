@@ -8,13 +8,21 @@ import Sales from './components/Sales.jsx'
 import Reports from './components/Reports.jsx'
 
 export default function App() {
-  const { auth, loading } = useApp()
+  const { auth, loading, apiError } = useApp()
   const [page, setPage] = useState('dashboard')
   const [collapsed, setCollapsed] = useState(false)
 
   if (loading) return (
     <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg)', color: 'var(--mu)', fontSize: 15 }}>
       Connecting to database...
+    </div>
+  )
+
+  if (apiError) return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg)', color: 'var(--mu)', gap: 12 }}>
+      <span style={{ fontSize: 32 }}>⚠️</span>
+      <span style={{ fontSize: 15, color: '#ff4444' }}>Database connection failed</span>
+      <span style={{ fontSize: 12, color: 'var(--mu)', maxWidth: 400, textAlign: 'center' }}>{apiError}</span>
     </div>
   )
 
