@@ -8,9 +8,15 @@ import Sales from './components/Sales.jsx'
 import Reports from './components/Reports.jsx'
 
 export default function App() {
-  const { auth } = useApp()
+  const { auth, loading } = useApp()
   const [page, setPage] = useState('dashboard')
   const [collapsed, setCollapsed] = useState(false)
+
+  if (loading) return (
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg)', color: 'var(--mu)', fontSize: 15 }}>
+      Connecting to database...
+    </div>
+  )
 
   if (!auth) return <Login />
 

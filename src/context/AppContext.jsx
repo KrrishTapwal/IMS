@@ -7,13 +7,6 @@ const USERS = [
   { email: 'user@store.com',  password: 'user123',  name: 'User',  role: 'User'  },
 ]
 
-function load(key, def) {
-  try { return JSON.parse(localStorage.getItem(key)) ?? def } catch { return def }
-}
-function save(key, val) {
-  localStorage.setItem(key, JSON.stringify(val))
-}
-
 function genId(prefix) {
   return prefix + '-' + Date.now() + '-' + Math.random().toString(36).slice(2, 6).toUpperCase()
 }
@@ -22,14 +15,24 @@ function genSKU() {
 }
 
 export function AppProvider({ children }) {
-  const [auth, setAuth]             = useState(null)
-  const [products, setProducts]     = useState(() => load('sm_products', []))
-  const [transactions, setTxns]     = useState(() => load('sm_transactions', []))
-  const [invoices, setInvoices]     = useState(() => load('sm_invoices', []))
+  const [auth, setAuth]         = useState(null)
+  const [products, setProducts] = useState([])
+  const [transactions, setTxns] = useState([])
+  const [invoices, setInvoices] = useState([])
+  const [loading, setLoading]   = useState(true)
 
-  useEffect(() => { save('sm_products',     products)     }, [products])
-  useEffect(() => { save('sm_transactions', transactions) }, [transactions])
-  useEffect(() => { save('sm_invoices',     invoices)     }, [invoices])
+  useEffect(() => {
+    Promise.all([
+      fetch('/api/products').then(r => r.json()),
+      fetch('/api/transactions').then(r => r.json()),
+      fetch('/api/invoices').then(r => r.json()),
+    ]).then(([prods, txns, invs]) => {
+      setProducts(prods)
+      setTxns(txns)
+      setInvoices(invs)
+      setLoading(false)
+    }).catch(() => setLoading(false))
+  }, [])
 
   function login(email, password) {
     const user = USERS.find(u => u.email === email && u.password === password)
@@ -40,7 +43,7 @@ export function AppProvider({ children }) {
 
   function logout() { setAuth(null) }
 
-  function addProduct(data) {
+  async function addProduct(data) {
     const p = {
       id: genId('PROD'),
       name: data.name,
@@ -52,29 +55,46 @@ export function AppProvider({ children }) {
       quantity: parseInt(data.quantity) || 0,
       lowStockAt: parseInt(data.lowStockAt) || 5,
     }
-    setProducts(prev => [...prev, p])
-    return p
+    const saved = await fetch('/api/products', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(p),
+    }).then(r => r.json())
+    setProducts(prev => [...prev, saved])
+    return saved
   }
 
-  function updateProduct(data) {
-    setProducts(prev => prev.map(p => p.id === data.id ? {
-      ...p,
+  async function updateProduct(data) {
+    const updated = {
+      ...products.find(p => p.id === data.id),
       name: data.name,
       vendorName: data.vendorName || '',
       invoiceNumber: data.invoiceNumber || '',
-      category: data.category || p.category,
-      sku: data.sku || p.sku,
-      price: parseFloat(data.price) || p.price,
-      quantity: parseInt(data.quantity) ?? p.quantity,
-      lowStockAt: parseInt(data.lowStockAt) ?? p.lowStockAt,
-    } : p))
+      category: data.category,
+      sku: data.sku,
+      price: parseFloat(data.price),
+      quantity: parseInt(data.quantity),
+      lowStockAt: parseInt(data.lowStockAt),
+    }
+    await fetch('/api/products', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updated),
+    })
+    setProducts(prev => prev.map(p => p.id === data.id ? updated : p))
   }
 
-  function deleteProduct(id) {
+  async function deleteProduct(id) {
+    const prod = products.find(p => p.id === id)
+    await fetch('/api/products', {
+      method: 'DELETE',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ _id: prod._id }),
+    })
     setProducts(prev => prev.filter(p => p.id !== id))
   }
 
-  function addTransaction(type, productId, qty, note) {
+  async function addTransaction(type, productId, qty, note) {
     const prod = products.find(p => p.id === productId)
     if (!prod) throw new Error('Product not found')
     const q = parseInt(qty)
@@ -88,14 +108,24 @@ export function AppProvider({ children }) {
       note: note || '',
       date: new Date().toISOString(),
     }
-    setTxns(prev => [...prev, txn])
-    setProducts(prev => prev.map(p => p.id === productId
-      ? { ...p, quantity: p.quantity + (type === 'IN' ? q : -q) }
-      : p))
-    return txn
+    const saved = await fetch('/api/transactions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(txn),
+    }).then(r => r.json())
+    setTxns(prev => [saved, ...prev])
+    const newQty = prod.quantity + (type === 'IN' ? q : -q)
+    const updatedProd = { ...prod, quantity: newQty }
+    await fetch('/api/products', {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(updatedProd),
+    })
+    setProducts(prev => prev.map(p => p.id === productId ? updatedProd : p))
+    return saved
   }
 
-  function addInvoice(data) {
+  async function addInvoice(data) {
     const inv = {
       id: genId('INV'),
       date: new Date().toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -106,11 +136,16 @@ export function AppProvider({ children }) {
       gst: parseFloat(data.gst) || 0,
       status: 'Issued',
     }
-    data.items.forEach(item => {
-      addTransaction('OUT', item.productId, item.qty, 'Invoice ' + inv.id)
-    })
-    setInvoices(prev => [...prev, inv])
-    return inv
+    for (const item of data.items) {
+      await addTransaction('OUT', item.productId, item.qty, 'Invoice ' + inv.id)
+    }
+    const saved = await fetch('/api/invoices', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(inv),
+    }).then(r => r.json())
+    setInvoices(prev => [saved, ...prev])
+    return saved
   }
 
   const stats = {
@@ -128,7 +163,7 @@ export function AppProvider({ children }) {
 
   return (
     <AppContext.Provider value={{
-      auth, login, logout,
+      auth, login, logout, loading,
       products, transactions, invoices, stats,
       addProduct, updateProduct, deleteProduct,
       addTransaction, addInvoice,
