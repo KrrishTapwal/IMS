@@ -13,16 +13,17 @@ export default function App() {
   const [collapsed, setCollapsed] = useState(false)
 
   if (loading) return (
-    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg)', color: 'var(--mu)', fontSize: 15 }}>
-      Connecting to database...
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#111827', gap: 14 }}>
+      <div style={{ width: 48, height: 48, borderRadius: 12, background: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16, color: '#fff', letterSpacing: '-1px' }}>RB</div>
+      <span style={{ fontSize: 13, color: 'rgba(255,255,255,.4)', fontWeight: 500 }}>Connecting to database...</span>
     </div>
   )
 
   if (apiError) return (
-    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: 'var(--bg)', color: 'var(--mu)', gap: 12 }}>
-      <span style={{ fontSize: 32 }}>⚠️</span>
-      <span style={{ fontSize: 15, color: '#ff4444' }}>Database connection failed</span>
-      <span style={{ fontSize: 12, color: 'var(--mu)', maxWidth: 400, textAlign: 'center' }}>{apiError}</span>
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', background: '#111827', gap: 10 }}>
+      <div style={{ width: 48, height: 48, borderRadius: 12, background: '#DC2626', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 800, fontSize: 16, color: '#fff' }}>RB</div>
+      <span style={{ fontSize: 14, color: '#EF4444', fontWeight: 600 }}>Database connection failed</span>
+      <span style={{ fontSize: 12, color: 'rgba(255,255,255,.35)', maxWidth: 380, textAlign: 'center', lineHeight: 1.6 }}>{apiError}</span>
     </div>
   )
 
