@@ -62,12 +62,12 @@ function LineChart({ invoices }) {
 export default function Reports() {
   const { products, invoices } = useApp()
 
-  const sv     = products.reduce((s, p) => s + +p.price * +p.quantity, 0)
+  const sv     = products.reduce((s, p) => s + +(p.purchasePrice ?? p.price ?? 0) * +p.quantity, 0)
   const totSal = invoices.reduce((s, i) => s + calcTotal(i), 0)
 
   function expCSV() {
-    const rows = [['Product', 'Vendor', 'InvNo', 'SKU', 'Category', 'Price', 'Qty', 'Value'],
-      ...products.map(p => [p.name, p.vendorName || '', p.invoiceNumber || '', p.sku || '', p.category, p.price, p.quantity, +p.price * +p.quantity])]
+    const rows = [['Product', 'Vendor', 'InvNo', 'SKU', 'Category', 'Purchase Price', 'Sale Price', 'Qty', 'Stock Value'],
+      ...products.map(p => [p.name, p.vendorName || '', p.invoiceNumber || '', p.sku || '', p.category, p.purchasePrice ?? p.price ?? 0, p.salePrice ?? p.price ?? 0, p.quantity, +(p.purchasePrice ?? p.price ?? 0) * +p.quantity])]
     const csv = rows.map(r => r.map(v => '"' + String(v || '').replace(/"/g, '""') + '"').join(',')).join('\n')
     const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv)
     a.download = 'stock.csv'; a.click()
@@ -103,7 +103,7 @@ export default function Reports() {
         <div className="tw">
           <table>
             <thead>
-              <tr><th>Product</th><th>Vendor</th><th>Category</th><th>Price</th><th>Qty</th><th>Value</th><th>Status</th></tr>
+              <tr><th>Product</th><th>Vendor</th><th>Category</th><th>Purchase ₹</th><th>Sale ₹</th><th>Qty</th><th>Stock Value</th><th>Status</th></tr>
             </thead>
             <tbody>
               {products.length === 0
@@ -116,9 +116,10 @@ export default function Reports() {
                         <td><strong>{p.name}</strong></td>
                         <td style={{ fontSize: 11, color: 'var(--mu)' }}>{p.vendorName || '-'}</td>
                         <td><span className="bge bbl">{p.category}</span></td>
-                        <td style={{ color: 'var(--mu)' }}>{fmt(p.price)}</td>
+                        <td style={{ color: 'var(--mu)' }}>{fmt(p.purchasePrice ?? p.price ?? 0)}</td>
+                        <td style={{ fontWeight: 600 }}>{fmt(p.salePrice ?? p.price ?? 0)}</td>
                         <td><strong style={{ color: low ? 'var(--dn)' : 'var(--tx)' }}>{p.quantity}</strong></td>
-                        <td style={{ color: 'var(--ac)' }}>{fmt(+p.price * +p.quantity)}</td>
+                        <td style={{ color: 'var(--ac)' }}>{fmt(+(p.purchasePrice ?? p.price ?? 0) * +p.quantity)}</td>
                         <td><span className={`bge ${cls}`}>{lbl}</span></td>
                       </tr>
                     )

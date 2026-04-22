@@ -3,21 +3,29 @@ import { useApp } from '../../context/AppContext.jsx'
 
 export default function ProductModal({ open, onClose, editProduct }) {
   const { addProduct, updateProduct, categories, addCategory } = useApp()
-  const [form, setForm] = useState({ name: '', vendorName: '', invoiceNumber: '', category: 'Electronics', sku: '', price: '', quantity: '', lowStockAt: '5' })
-  const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
-  const [newCat, setNewCat] = useState('')
+  const [form, setForm] = useState({ name: '', vendorName: '', invoiceNumber: '', category: 'Electronics', sku: '', purchasePrice: '', salePrice: '', quantity: '', lowStockAt: '5' })
+  const [loading, setLoading]   = useState(false)
+  const [error, setError]       = useState('')
+  const [newCat, setNewCat]     = useState('')
   const [showNewCat, setShowNewCat] = useState(false)
 
   useEffect(() => {
     if (editProduct) {
-      setForm({ name: editProduct.name, vendorName: editProduct.vendorName || '', invoiceNumber: editProduct.invoiceNumber || '', category: editProduct.category, sku: editProduct.sku || '', price: String(editProduct.price), quantity: String(editProduct.quantity), lowStockAt: String(editProduct.lowStockAt) })
+      setForm({
+        name: editProduct.name,
+        vendorName: editProduct.vendorName || '',
+        invoiceNumber: editProduct.invoiceNumber || '',
+        category: editProduct.category,
+        sku: editProduct.sku || '',
+        purchasePrice: String(editProduct.purchasePrice ?? editProduct.price ?? ''),
+        salePrice: String(editProduct.salePrice ?? editProduct.price ?? ''),
+        quantity: String(editProduct.quantity),
+        lowStockAt: String(editProduct.lowStockAt),
+      })
     } else {
-      setForm({ name: '', vendorName: '', invoiceNumber: '', category: categories[0] || 'Electronics', sku: '', price: '', quantity: '', lowStockAt: '5' })
+      setForm({ name: '', vendorName: '', invoiceNumber: '', category: categories[0] || 'Electronics', sku: '', purchasePrice: '', salePrice: '', quantity: '', lowStockAt: '5' })
     }
-    setError('')
-    setNewCat('')
-    setShowNewCat(false)
+    setError(''); setNewCat(''); setShowNewCat(false)
   }, [editProduct, open])
 
   const set = k => e => setForm(f => ({ ...f, [k]: e.target.value }))
@@ -27,14 +35,14 @@ export default function ProductModal({ open, onClose, editProduct }) {
     if (!name) return
     await addCategory(name)
     setForm(f => ({ ...f, category: name }))
-    setNewCat('')
-    setShowNewCat(false)
+    setNewCat(''); setShowNewCat(false)
   }
 
   async function handleSave() {
-    if (!form.name || !form.price || !form.quantity) { setError('Name, Price and Quantity are required'); return }
-    setLoading(true)
-    setError('')
+    if (!form.name || !form.purchasePrice || !form.salePrice || !form.quantity) {
+      setError('Name, Purchase Price, Sale Price and Quantity are required'); return
+    }
+    setLoading(true); setError('')
     try {
       if (editProduct) await updateProduct({ id: editProduct.id, ...form })
       else await addProduct(form)
@@ -56,7 +64,7 @@ export default function ProductModal({ open, onClose, editProduct }) {
           <button className="ib" onClick={onClose}>✕</button>
         </div>
         <div className="mbd">
-          {error && <div style={{ background: '#ff444422', border: '1px solid #ff4444', borderRadius: 8, padding: '8px 12px', color: '#ff4444', fontSize: 13, marginBottom: 8 }}>{error}</div>}
+          {error && <div style={{ background: '#FEE2E2', border: '1px solid #FECACA', borderRadius: 8, padding: '8px 12px', color: '#DC2626', fontSize: 13, marginBottom: 8 }}>{error}</div>}
           <div className="fg"><label>Product Name *</label><input value={form.name} onChange={set('name')} placeholder="e.g. Laptop Pro X" /></div>
           <div className="g2f">
             <div className="fg"><label>Vendor Name</label><input value={form.vendorName} onChange={set('vendorName')} placeholder="Vendor Co." /></div>
@@ -81,14 +89,29 @@ export default function ProductModal({ open, onClose, editProduct }) {
             </div>
             <div className="fg"><label>SKU (blank = auto)</label><input value={form.sku} onChange={set('sku')} placeholder="Auto-generated" /></div>
           </div>
-          <div className="g3f">
-            <div className="fg"><label>Price ₹ *</label><input type="number" value={form.price} onChange={set('price')} placeholder="0" /></div>
-            <div className="fg"><label>Quantity *</label><input type="number" value={form.quantity} onChange={set('quantity')} placeholder="0" /></div>
-            <div className="fg"><label>Low Alert</label><input type="number" value={form.lowStockAt} onChange={set('lowStockAt')} /></div>
+
+          {/* Dual Pricing */}
+          <div className="g2f">
+            <div className="fg">
+              <label>Purchase Price ₹ *</label>
+              <input type="number" value={form.purchasePrice} onChange={set('purchasePrice')} placeholder="Cost price" />
+              <span style={{ fontSize: 10, color: 'var(--mu)' }}>Internal only — not shown in invoices</span>
+            </div>
+            <div className="fg">
+              <label>Sale Price ₹ *</label>
+              <input type="number" value={form.salePrice} onChange={set('salePrice')} placeholder="Selling price" />
+              <span style={{ fontSize: 10, color: 'var(--mu)' }}>Auto-filled in invoices</span>
+            </div>
           </div>
+
+          <div className="g2f">
+            <div className="fg"><label>Quantity *</label><input type="number" value={form.quantity} onChange={set('quantity')} placeholder="0" /></div>
+            <div className="fg"><label>Low Stock Alert</label><input type="number" value={form.lowStockAt} onChange={set('lowStockAt')} /></div>
+          </div>
+
           <div className="mft">
             <button className="btn bp" onClick={handleSave} disabled={loading}>
-              {loading ? <span className="sp" style={{ borderTopColor: '#0F1117' }} /> : (editProduct ? 'Update' : 'Add')}
+              {loading ? <span className="sp" style={{ borderTopColor: '#fff' }} /> : (editProduct ? 'Update' : 'Add Product')}
             </button>
             <button className="btn bss" onClick={onClose}>Cancel</button>
           </div>

@@ -70,11 +70,15 @@ function NewInvoice({ products, onBack, onCreated }) {
   const tax  = taxable * (+gst / 100)
   const total = taxable + tax
 
+  function getSalePrice(prod) {
+    return prod.salePrice ?? prod.price ?? 0
+  }
+
   function addItem() {
     const prod = available.find(p => p.id === selProd)
     if (!prod) { alert('Select a product'); return }
     const q = +qty || 1
-    const r = +rate || prod.price
+    const r = +rate || getSalePrice(prod)
     setItems(prev => {
       const ex = prev.findIndex(i => i.productId === prod.id)
       if (ex >= 0) { const n = [...prev]; n[ex] = { ...n[ex], qty: n[ex].qty + q }; return n }
@@ -122,12 +126,16 @@ function NewInvoice({ products, onBack, onCreated }) {
           <div className="card">
             <div className="ctit">Add Items</div>
             <div style={{ display: 'flex', gap: 7, marginBottom: 12, flexWrap: 'wrap' }}>
-              <select value={selProd} onChange={e => setSelProd(e.target.value)} style={{ flex: 2, minWidth: 140 }}>
+              <select value={selProd} onChange={e => {
+                  setSelProd(e.target.value)
+                  const prod = available.find(p => p.id === e.target.value)
+                  if (prod) setRate(String(getSalePrice(prod)))
+                }} style={{ flex: 2, minWidth: 140 }}>
                 <option value="">Select product...</option>
                 {available.map(p => <option key={p.id} value={p.id}>{p.name} (Qty:{p.quantity})</option>)}
               </select>
               <input type="number" value={qty}  onChange={e => setQty(e.target.value)}  min="1" style={{ width: 60 }} />
-              <input type="number" value={rate} onChange={e => setRate(e.target.value)} placeholder="Rate ₹" style={{ width: 90 }} />
+              <input type="number" value={rate} onChange={e => setRate(e.target.value)} placeholder="Sale ₹" style={{ width: 90 }} />
               <button className="btn bp bsm" onClick={addItem}>+ Add</button>
             </div>
 
@@ -186,7 +194,7 @@ function InvoiceDetail({ inv, onBack }) {
       <div className="card" style={{ maxWidth: 600, margin: '0 auto', padding: 24 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: 22 }}>
           <div>
-            <div style={{ fontFamily: "'Playfair Display',serif", fontSize: 20, fontWeight: 800 }}>StockMaster</div>
+            <div style={{ fontSize: 20, fontWeight: 800, color: '#DC2626' }}>Red Bean IMS</div>
             <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 2 }}>Inventory Management</div>
           </div>
           <div style={{ textAlign: 'right' }}>
@@ -196,7 +204,7 @@ function InvoiceDetail({ inv, onBack }) {
           </div>
         </div>
 
-        <div style={{ padding: '11px 13px', borderRadius: 10, background: '#0F1117', marginBottom: 18 }}>
+        <div style={{ padding: '11px 13px', borderRadius: 10, background: 'var(--bg)', marginBottom: 18 }}>
           <div style={{ fontSize: 10, color: 'var(--mu)' }}>Issue To</div>
           <div style={{ fontWeight: 600, marginTop: 2 }}>{inv.issueTo || '-'}</div>
           {inv.remarks && <div style={{ fontSize: 11, color: 'var(--mu)', marginTop: 5 }}>Remarks: {inv.remarks}</div>}

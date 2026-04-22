@@ -19,6 +19,19 @@ async function getDb() {
 // Health check
 app.get('/', (req, res) => res.json({ status: 'Red Bean IMS Server running' }))
 
+// ── Bulk Products ─────────────────────────────────────────
+app.post('/api/products/bulk', async (req, res) => {
+  try {
+    const db = await getDb()
+    const products = req.body
+    if (!Array.isArray(products) || products.length === 0)
+      return res.status(400).json({ error: 'No products provided' })
+    const result = await db.collection('products').insertMany(products)
+    const inserted = await db.collection('products').find({ _id: { $in: Object.values(result.insertedIds) } }).toArray()
+    res.json(inserted)
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
 // ── Products ──────────────────────────────────────────────
 app.get('/api/products', async (req, res) => {
   try {

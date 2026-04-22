@@ -70,20 +70,32 @@ export function AppProvider({ children }) {
     setCategories(prev => prev.includes(name) ? prev : [...prev, name])
   }
 
-  async function addProduct(data) {
-    const p = {
+  function buildProduct(data) {
+    return {
       id: genId('PROD'),
       name: data.name,
       vendorName: data.vendorName || '',
       invoiceNumber: data.invoiceNumber || '',
       category: data.category || 'Other',
       sku: data.sku || genSKU(),
-      price: parseFloat(data.price) || 0,
+      purchasePrice: parseFloat(data.purchasePrice) || 0,
+      salePrice: parseFloat(data.salePrice) || 0,
       quantity: parseInt(data.quantity) || 0,
       lowStockAt: parseInt(data.lowStockAt) || 5,
     }
+  }
+
+  async function addProduct(data) {
+    const p = buildProduct(data)
     const saved = await api('/api/products', 'POST', p)
     setProducts(prev => [...prev, saved])
+    return saved
+  }
+
+  async function addBulkProducts(dataArr) {
+    const products = dataArr.map(buildProduct)
+    const saved = await api('/api/products/bulk', 'POST', products)
+    setProducts(prev => [...prev, ...saved])
     return saved
   }
 
@@ -96,7 +108,8 @@ export function AppProvider({ children }) {
       invoiceNumber: data.invoiceNumber || '',
       category: data.category,
       sku: data.sku,
-      price: parseFloat(data.price),
+      purchasePrice: parseFloat(data.purchasePrice),
+      salePrice: parseFloat(data.salePrice),
       quantity: parseInt(data.quantity),
       lowStockAt: parseInt(data.lowStockAt),
     }
@@ -168,7 +181,7 @@ export function AppProvider({ children }) {
     <AppContext.Provider value={{
       auth, login, logout, loading, apiError,
       products, transactions, invoices, categories, stats,
-      addProduct, updateProduct, deleteProduct,
+      addProduct, addBulkProducts, updateProduct, deleteProduct,
       addTransaction, addInvoice, addCategory,
     }}>
       {children}
