@@ -20,7 +20,10 @@ async function api(path, method = 'GET', body) {
     headers: body ? { 'Content-Type': 'application/json' } : {},
     body: body ? JSON.stringify(body) : undefined,
   })
-  if (!res.ok) throw new Error(`API ${method} ${path} failed: ${res.status}`)
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}))
+    throw new Error(data.error || `API ${method} ${path} failed: ${res.status}`)
+  }
   return res.json()
 }
 
