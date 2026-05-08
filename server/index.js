@@ -164,7 +164,7 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`)
   // Ping every 14 min to prevent Render free tier sleep
   setInterval(() => {
-    fetch('https://redbean-ims-server.onrender.com/')
+    fetch('https://redbean-ims-server-i6s7.onrender.com/')
       .then(() => console.log('Self-ping OK'))
       .catch(e => console.log('Self-ping failed:', e.message))
   }, 14 * 60 * 1000)

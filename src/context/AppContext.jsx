@@ -14,7 +14,7 @@ function genSKU() {
   return 'SKU-' + Math.random().toString(36).slice(2, 8).toUpperCase()
 }
 
-const BASE_URL = 'https://redbean-ims-server.onrender.com'
+const BASE_URL = 'https://redbean-ims-server-i6s7.onrender.com'
 
 async function api(path, method = 'GET', body) {
   const res = await fetch(`${BASE_URL}${path}`, {
