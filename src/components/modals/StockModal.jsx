@@ -1,31 +1,33 @@
 import { useState } from 'react'
 import { useApp } from '../../context/AppContext.jsx'
+import { useToast } from '../../context/ToastContext.jsx'
 
 export default function StockModal({ open, onClose, stockTarget }) {
   const { addTransaction } = useApp()
-  const [qty, setQty]     = useState('')
-  const [note, setNote]   = useState('')
+  const { showToast }      = useToast()
+  const [qty, setQty]       = useState('')
+  const [note, setNote]     = useState('')
   const [loading, setLoading] = useState(false)
-  const [error, setError] = useState('')
+  const [error, setError]   = useState('')
 
   const type = stockTarget?.type || 'IN'
   const name = stockTarget?.name || ''
+  const isIn = type === 'IN'
 
-  function handleSave() {
+  async function handleSave() {
     setError('')
     if (!qty || +qty <= 0) { setError('Enter a valid quantity'); return }
     setLoading(true)
-    setTimeout(() => {
-      try {
-        addTransaction(type, stockTarget.productId, qty, note)
-        setQty(''); setNote('')
-        setLoading(false)
-        onClose()
-      } catch (err) {
-        setError(err.message)
-        setLoading(false)
-      }
-    }, 300)
+    try {
+      await addTransaction(type, stockTarget.productId, qty, note)
+      showToast(`Stock ${type === 'IN' ? 'added' : 'removed'}: ${qty} units of ${name}`, 'success')
+      setQty(''); setNote('')
+      onClose()
+    } catch (err) {
+      setError(err.message)
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (!open) return null
@@ -38,19 +40,24 @@ export default function StockModal({ open, onClose, stockTarget }) {
           <button className="ib" onClick={onClose}>✕</button>
         </div>
         <div className="mbd">
-          <div className={`al ${type === 'IN' ? 'as' : 'ae'}`}>
-            {type === 'IN' ? '📦 Adding Stock' : '🛒 Removing Stock'}
+          <div className={`al ${isIn ? 'as' : 'ae'}`}>
+            <svg width="14" height="14" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round">
+              {isIn ? <path d="M12 19V5m-7 7 7-7 7 7"/> : <path d="M12 5v14m-7-7 7 7 7-7"/>}
+            </svg>
+            {isIn ? 'Adding stock to inventory' : 'Removing stock from inventory'}
           </div>
           {error && <div className="al ae">{error}</div>}
-          <div className="fg"><label>Quantity *</label>
-            <input type="number" value={qty} onChange={e => setQty(e.target.value)} placeholder="Enter quantity" min="1" />
+          <div className="fg">
+            <label>Quantity *</label>
+            <input type="number" value={qty} onChange={e => setQty(e.target.value)} placeholder="Enter quantity" min="1" autoFocus />
           </div>
-          <div className="fg"><label>Note</label>
-            <input value={note} onChange={e => setNote(e.target.value)} placeholder="Optional..." />
+          <div className="fg">
+            <label>Note</label>
+            <input value={note} onChange={e => setNote(e.target.value)} placeholder="Optional reason..." />
           </div>
           <div className="mft">
             <button className="btn bp" onClick={handleSave} disabled={loading}>
-              {loading ? <span className="sp" style={{ borderTopColor: '#0F1117' }} /> : 'Confirm'}
+              {loading ? <span className="sp" /> : 'Confirm'}
             </button>
             <button className="btn bss" onClick={onClose}>Cancel</button>
           </div>

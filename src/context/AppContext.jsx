@@ -35,6 +35,7 @@ export function AppProvider({ children }) {
   const [transactions, setTxns]     = useState([])
   const [invoices, setInvoices]     = useState([])
   const [categories, setCategories] = useState(['Electronics', 'Accessories', 'Clothing', 'Food', 'Stationery', 'Other'])
+  const [suppliers, setSuppliers]   = useState([])
   const [loading, setLoading]       = useState(true)
   const [apiError, setApiError]     = useState(null)
 
@@ -44,11 +45,13 @@ export function AppProvider({ children }) {
       api('/api/transactions'),
       api('/api/invoices'),
       api('/api/categories'),
-    ]).then(([prods, txns, invs, cats]) => {
+      api('/api/suppliers'),
+    ]).then(([prods, txns, invs, cats, sups]) => {
       setProducts(prods)
       setTxns(txns)
       setInvoices(invs)
       setCategories(cats)
+      setSuppliers(sups)
       setLoading(false)
     }).catch(err => {
       setApiError(err.message)
@@ -145,6 +148,23 @@ export function AppProvider({ children }) {
     return saved
   }
 
+  async function addSupplier(data) {
+    const sup = { id: genId('SUP'), ...data }
+    const saved = await api('/api/suppliers', 'POST', sup)
+    setSuppliers(prev => [...prev, saved])
+    return saved
+  }
+
+  async function updateSupplier(data) {
+    await api('/api/suppliers', 'PUT', data)
+    setSuppliers(prev => prev.map(s => s._id === data._id ? { ...s, ...data } : s))
+  }
+
+  async function deleteSupplier(_id) {
+    await api('/api/suppliers', 'DELETE', { _id })
+    setSuppliers(prev => prev.filter(s => String(s._id) !== String(_id)))
+  }
+
   async function addInvoice(data) {
     const inv = {
       id: genId('INV'),
@@ -180,9 +200,10 @@ export function AppProvider({ children }) {
   return (
     <AppContext.Provider value={{
       auth, login, logout, loading, apiError,
-      products, transactions, invoices, categories, stats,
+      products, transactions, invoices, categories, suppliers, stats,
       addProduct, addBulkProducts, updateProduct, deleteProduct,
       addTransaction, addInvoice, addCategory,
+      addSupplier, updateSupplier, deleteSupplier,
     }}>
       {children}
     </AppContext.Provider>

@@ -1,6 +1,7 @@
 import { useState, useMemo, useRef } from 'react'
 import * as XLSX from 'xlsx'
 import { useApp } from '../context/AppContext.jsx'
+import { useToast } from '../context/ToastContext.jsx'
 import ProductModal from './modals/ProductModal.jsx'
 import StockModal from './modals/StockModal.jsx'
 
@@ -10,6 +11,7 @@ const pp = p => p.purchasePrice ?? p.price ?? 0
 
 export default function Inventory() {
   const { auth, products, deleteProduct, addBulkProducts } = useApp()
+  const { showToast } = useToast()
   const [search, setSearch]         = useState('')
   const [cat, setCat]               = useState('')
   const [prodModal, setProdModal]   = useState(false)
@@ -32,9 +34,14 @@ export default function Inventory() {
   function openEdit(p) { setEditProd(p);    setProdModal(true) }
   function openStock(type, p) { setStockTarget({ type, productId: p.id, name: p.name }); setStockModal(true) }
 
-  function handleDelete(id) {
-    if (!confirm('Delete this product?')) return
-    deleteProduct(id)
+  async function handleDelete(id, name) {
+    if (!confirm(`Delete "${name}"? This cannot be undone.`)) return
+    try {
+      await deleteProduct(id)
+      showToast(`"${name}" deleted`, 'success')
+    } catch (e) {
+      showToast(e.message, 'error')
+    }
   }
 
   function status(p) {
@@ -81,6 +88,7 @@ export default function Inventory() {
       if (mapped.length === 0) { setUploadMsg('No valid rows found. Check column names.'); setUploading(false); return }
 
       await addBulkProducts(mapped)
+      showToast(`${mapped.length} products imported successfully`, 'success')
       setUploadMsg(`✓ ${mapped.length} products imported successfully!`)
     } catch (err) {
       setUploadMsg('Error: ' + err.message)
@@ -166,7 +174,7 @@ export default function Inventory() {
                             <button className="ib" title="Edit" onClick={() => openEdit(p)}>
                               <svg width="13" height="13" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
                             </button>
-                            <button className="ib" title="Delete" style={{ color: 'var(--ac)' }} onClick={() => handleDelete(p.id)}>
+                            <button className="ib" title="Delete" style={{ color: 'var(--ac)' }} onClick={() => handleDelete(p.id, p.name)}>
                               <svg width="13" height="13" fill="none" stroke="#DC2626" strokeWidth="2" viewBox="0 0 24 24" strokeLinecap="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6m4-6v6"/><path d="M9 6V4h6v2"/></svg>
                             </button>
                           </>}

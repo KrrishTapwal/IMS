@@ -1,19 +1,23 @@
+import 'dotenv/config'
 import express from 'express'
 import cors from 'cors'
 import { MongoClient, ObjectId } from 'mongodb'
 
 const app = express()
 const PORT = process.env.PORT || 4000
-const MONGODB_URI = process.env.MONGODB_URI
 
 app.use(cors())
 app.use(express.json())
 
-let client
+let db
 async function getDb() {
-  if (!client) client = new MongoClient(MONGODB_URI)
-  await client.connect()
-  return client.db('ims')
+  if (!db) {
+    const client = new MongoClient(process.env.MONGODB_URI)
+    await client.connect()
+    db = client.db('ims')
+    console.log('MongoDB connected')
+  }
+  return db
 }
 
 // Health check
@@ -118,6 +122,40 @@ app.post('/api/categories', async (req, res) => {
     const { name } = req.body
     if (!name) return res.status(400).json({ error: 'Name required' })
     await db.collection('categories').updateOne({ name }, { $set: { name } }, { upsert: true })
+    res.json({ success: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+// ── Suppliers ──────────────────────────────────────────────
+app.get('/api/suppliers', async (req, res) => {
+  try {
+    const db = await getDb()
+    const suppliers = await db.collection('suppliers').find({}).sort({ name: 1 }).toArray()
+    res.json(suppliers)
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+app.post('/api/suppliers', async (req, res) => {
+  try {
+    const db = await getDb()
+    const result = await db.collection('suppliers').insertOne(req.body)
+    res.json({ ...req.body, _id: result.insertedId })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+app.put('/api/suppliers', async (req, res) => {
+  try {
+    const db = await getDb()
+    const { _id, ...data } = req.body
+    await db.collection('suppliers').updateOne({ _id: new ObjectId(String(_id)) }, { $set: data })
+    res.json({ success: true })
+  } catch (e) { res.status(500).json({ error: e.message }) }
+})
+
+app.delete('/api/suppliers', async (req, res) => {
+  try {
+    const db = await getDb()
+    await db.collection('suppliers').deleteOne({ _id: new ObjectId(String(req.body._id)) })
     res.json({ success: true })
   } catch (e) { res.status(500).json({ error: e.message }) }
 })

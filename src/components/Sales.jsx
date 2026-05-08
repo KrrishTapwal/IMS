@@ -89,21 +89,19 @@ function NewInvoice({ products, onBack, onCreated }) {
 
   function removeItem(i) { setItems(prev => prev.filter((_, idx) => idx !== i)) }
 
-  function handleCreate() {
+  async function handleCreate() {
     setError('')
-    if (!issueTo.trim())  { setError('Issue To is required'); return }
-    if (!items.length)    { setError('Add at least one item'); return }
+    if (!issueTo.trim()) { setError('Issue To is required'); return }
+    if (!items.length)   { setError('Add at least one item'); return }
     setLoading(true)
-    setTimeout(() => {
-      try {
-        const inv = addInvoice({ issueTo, remarks, items, discount, gst })
-        setLoading(false)
-        onCreated(inv.id)
-      } catch (err) {
-        setError(err.message)
-        setLoading(false)
-      }
-    }, 300)
+    try {
+      const inv = await addInvoice({ issueTo, remarks, items, discount, gst })
+      setLoading(false)
+      onCreated(inv.id)
+    } catch (err) {
+      setError(err.message)
+      setLoading(false)
+    }
   }
 
   return (
@@ -114,7 +112,7 @@ function NewInvoice({ products, onBack, onCreated }) {
       </div>
       {error && <div className="al ae">{error}</div>}
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: 14 }}>
+      <div className="invg">
         <div>
           <div className="card" style={{ marginBottom: 12 }}>
             <div className="g2f">
@@ -155,7 +153,7 @@ function NewInvoice({ products, onBack, onCreated }) {
         </div>
 
         <div>
-          <div className="card" style={{ position: 'sticky', top: 0 }}>
+          <div className="card" style={{ position: 'sticky', top: 0, alignSelf: 'start' }}>
             <div className="ctit">Summary</div>
             <div className="g2f" style={{ marginBottom: 8 }}>
               <div className="fg" style={{ margin: 0 }}><label>Discount %</label><input type="number" value={discount} onChange={e => setDiscount(e.target.value)} min="0" /></div>
